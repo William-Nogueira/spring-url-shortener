@@ -5,6 +5,7 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class RedisConstants {
 
+    public static final String DIRTY_SET_KEY = "sync:dirty_codes";
     public static final String COUNTER = "counter:global";
     private static final String CLICKS_KEY_PREFIX = "clicks:";
     private static final String URL = "url:";

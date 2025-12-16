@@ -5,7 +5,7 @@ import lombok.experimental.UtilityClass;
 import java.math.BigInteger;
 
 @UtilityClass
-public final class Base62Util {
+public class Base62Util {
 
     private static final String ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     private static final BigInteger BASE = BigInteger.valueOf(62);

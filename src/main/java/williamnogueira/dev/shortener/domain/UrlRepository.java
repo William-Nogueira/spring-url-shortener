@@ -6,6 +6,8 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 
+import java.util.Optional;
+
 @Repository
 @RequiredArgsConstructor
 class UrlRepository {
@@ -16,6 +18,11 @@ class UrlRepository {
 
     public void save(UrlEntity entity) {
         getTable().putItem(entity);
+    }
+
+    public Optional<UrlEntity> findById(String code) {
+        var entity = getTable().getItem(r -> r.key(k -> k.partitionValue(code)));
+        return Optional.ofNullable(entity);
     }
 
     private DynamoDbTable<UrlEntity> getTable() {
