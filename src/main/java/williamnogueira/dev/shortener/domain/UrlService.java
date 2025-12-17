@@ -1,5 +1,6 @@
 package williamnogueira.dev.shortener.domain;
 
+import io.micrometer.core.annotation.Counted;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -30,6 +31,7 @@ public class UrlService {
 
     private static final Duration CACHE_TTL = Duration.ofHours(12);
 
+    @Counted(value = "business.urls.created", description = "Number of Short URLs successfully created")
     public UrlDto create(String originalUrl) {
         log.info("Attempting to shorten URL: {}", originalUrl);
 
@@ -92,5 +94,4 @@ public class UrlService {
         return urlRepository.findById(code)
                 .orElseThrow(() -> new UrlNotFoundException("URL not found for code: " + code));
     }
-
 }
