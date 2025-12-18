@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 @ControllerAdvice
 @Slf4j
@@ -20,6 +20,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<@NonNull Object> handleResponseStatusException(ResponseStatusException ex, WebRequest request) {
         log.error(ex.getMessage(), ex);
         return buildErrorResponse(ex.getMessage(), ex.getStatusCode().value(), ex.getReason(), request);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<@NonNull Object> handleNoResourceFoundException(NoResourceFoundException ex, WebRequest request) {
+        log.debug("Static resource not found: {}", ex.getResourcePath());
+        return buildErrorResponse("Resource not found", HttpStatus.NOT_FOUND.value(), "Not Found", request);
     }
 
     @ExceptionHandler(Exception.class)
