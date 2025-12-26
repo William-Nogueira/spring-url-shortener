@@ -3,7 +3,7 @@ package williamnogueira.dev.shortener.domain;
 import io.micrometer.core.annotation.Counted;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import williamnogueira.dev.shortener.infra.IdGenerator;
@@ -12,8 +12,9 @@ import williamnogueira.dev.shortener.infra.utils.EntityMapper;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Objects;
 
+import static java.util.Objects.requireNonNullElse;
+import static org.springframework.util.StringUtils.hasText;
 import static williamnogueira.dev.shortener.infra.constants.RedisConstants.DIRTY_SET_KEY;
 import static williamnogueira.dev.shortener.infra.constants.RedisConstants.getClicksKey;
 import static williamnogueira.dev.shortener.infra.constants.RedisConstants.getUrlCacheKey;
@@ -26,7 +27,7 @@ public class UrlService {
 
     private final UrlRepository urlRepository;
     private final IdGenerator idGenerator;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate redisTemplate;
     private final EntityMapper mapper;
 
     private static final Duration CACHE_TTL = Duration.ofHours(12);
@@ -59,9 +60,9 @@ public class UrlService {
         String cacheKey = getUrlCacheKey(code);
 
         var cachedUrl = redisTemplate.opsForValue().get(getUrlCacheKey(code));
-        if (Objects.nonNull(cachedUrl)) {
+        if (hasText(cachedUrl)) {
             log.info("Cache HIT for code: [{}]", code);
-            return cachedUrl.toString();
+            return cachedUrl;
         }
 
         log.info("Cache MISS for code: [{}]. Fetching from DB.", code);
@@ -76,14 +77,14 @@ public class UrlService {
 
     public UrlDto getMetadata(String code) {
         var shortUrlEntity = findShortUrl(code);
-        var clicksObj = Objects.requireNonNullElse(redisTemplate.opsForValue().get(getClicksKey(code)), 0L);
+        String clicks = requireNonNullElse(redisTemplate.opsForValue().get(getClicksKey(code)), "0");
 
-        shortUrlEntity.setClicks(shortUrlEntity.getClicks() + Long.parseLong(clicksObj.toString()));
+        shortUrlEntity.setClicks(shortUrlEntity.getClicks() + Long.parseLong(clicks));
 
         return mapper.toDto(shortUrlEntity);
     }
 
-    @Async("clickExecutor")
+    @Async
     public void incrementClickCount(String code) {
         redisTemplate.opsForValue().increment(getClicksKey(code), 1);
         redisTemplate.opsForSet().add(DIRTY_SET_KEY, code);

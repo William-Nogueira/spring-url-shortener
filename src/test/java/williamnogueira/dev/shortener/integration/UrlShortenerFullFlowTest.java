@@ -5,7 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.web.servlet.client.RestTestClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
@@ -13,8 +13,7 @@ import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import williamnogueira.dev.shortener.domain.UrlDto;
 import williamnogueira.dev.shortener.domain.UrlEntity;
 
-import java.util.Objects;
-
+import static java.util.Objects.nonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("Integration: URL Shortener Full Lifecycle")
@@ -27,7 +26,7 @@ class UrlShortenerFullFlowTest extends AbstractIntegrationTest {
     private DynamoDbEnhancedClient enhancedClient;
 
     @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
+    private StringRedisTemplate redisTemplate;
 
     @BeforeEach
     void setupDynamoTable() {
@@ -40,7 +39,7 @@ class UrlShortenerFullFlowTest extends AbstractIntegrationTest {
 
     @AfterEach
     void clearRedis() {
-        if (Objects.nonNull(redisTemplate.getConnectionFactory())) {
+        if (nonNull(redisTemplate.getConnectionFactory())) {
             redisTemplate.getConnectionFactory().getConnection().serverCommands().flushAll();
         }
     }

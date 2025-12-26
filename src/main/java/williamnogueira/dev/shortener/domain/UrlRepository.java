@@ -34,9 +34,7 @@ class UrlRepository {
                 .tableName("urls")
                 .key(Map.of("code", AttributeValue.builder().s(code).build()))
                 .updateExpression("ADD clicks :inc")
-                .expressionAttributeValues(Map.of(
-                        ":inc", AttributeValue.builder().n(String.valueOf(totalClicks)).build()
-                ))
+                .expressionAttributeValues(Map.of(":inc", AttributeValue.builder().n(String.valueOf(totalClicks)).build()))
         );
     }
 

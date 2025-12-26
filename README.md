@@ -74,7 +74,7 @@ To avoid database lookups for uniqueness checks and to prevent enumeration attac
 *   **Result:** A guaranteed unique, non-sequential, collision-free short code generated purely in memory (after fetching a sequence block).
 
 #### 3. Java 25 & Virtual Threads
-The application leverages Java 25 Virtual Threads (`Executors.newVirtualThreadPerTaskExecutor`) to efficiently handle blocking I/O (Redis and DynamoDB calls), enabling high concurrency with reduced thread management overhead.
+The application leverages Java 25 Virtual Threads (`spring.threads.virtual.enabled=true`) to efficiently handle blocking I/O (Redis and DynamoDB calls), enabling high concurrency with reduced thread management overhead.
 
 ---
 
@@ -99,7 +99,7 @@ The project includes a fully containerized environment (App, Redis, DynamoDB Loc
 git clone https://github.com/William-Nogueira/spring-url-shortener.git
 
 # Start the stack
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 Access the services:
@@ -114,11 +114,11 @@ Access the services:
 
 The application exposes custom metrics via Micrometer to monitor business KPIs in real-time.
 
-| Metric | Description |
-| :--- | :--- |
-| `business.urls.created` | Counter of total URLs shortened. |
-| `http.server.requests` | Latency and throughput of API endpoints. |
-| `executor.active` | Monitoring of Virtual Thread pool usage. |
+| Metric                  | Description                              |
+|:------------------------|:-----------------------------------------|
+| `business.urls.created` | Counter of total URLs shortened.         |
+| `http.server.requests`  | Latency and throughput of API endpoints. |
+| `executor.active`       | Monitoring of Virtual Thread pool usage. |
 
 ---
 
@@ -126,11 +126,11 @@ The application exposes custom metrics via Micrometer to monitor business KPIs i
 
 Environment variables can be tuned in `docker-compose.yml`:
 
-| Variable | Default | Description |
-| :--- | :--- | :--- |
-| `APP_SALT` | `SECRET` | Seed for the ID generation obfuscation. |
-| `DYNAMO_ENDPOINT` | `http://dynamodb-local:8000` | Target DynamoDB instance. |
-| `SPRING_DATA_REDIS_HOST` | `redis` | Redis host address. |
+| Variable                 | Default                      | Description                             |
+|:-------------------------|:-----------------------------|:----------------------------------------|
+| `APP_SALT`               | `SECRET`                     | Seed for the ID generation obfuscation. |
+| `DYNAMO_ENDPOINT`        | `http://dynamodb-local:8000` | Target DynamoDB instance.               |
+| `SPRING_DATA_REDIS_HOST` | `redis`                      | Redis host address.                     |
 
 ---
 

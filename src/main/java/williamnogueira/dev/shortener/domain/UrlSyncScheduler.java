@@ -2,27 +2,28 @@ package williamnogueira.dev.shortener.domain;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.CompletableFuture;
 
+import static java.util.Objects.isNull;
+import static org.springframework.util.CollectionUtils.isEmpty;
+import static org.springframework.util.StringUtils.hasText;
 import static williamnogueira.dev.shortener.infra.constants.RedisConstants.DIRTY_SET_KEY;
 import static williamnogueira.dev.shortener.infra.constants.RedisConstants.getClicksKey;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
+@RequiredArgsConstructor
 class UrlSyncScheduler {
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate redisTemplate;
     private final UrlRepository urlRepository;
-    private final ExecutorService batchExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private final SimpleAsyncTaskExecutor applicationTaskExecutor;
 
     private static final int MIN_BATCH_SIZE = 100;
     private static final int MEDIUM_BATCH_SIZE = 2500;
@@ -37,7 +38,7 @@ class UrlSyncScheduler {
 
         while (true) {
             var codes = redisTemplate.opsForSet().pop(DIRTY_SET_KEY, dynamicBatchSize());
-            if (Objects.isNull(codes) || codes.isEmpty()) {
+            if (isEmpty(codes)) {
                 break;
             }
             processBatch(codes);
@@ -46,40 +47,37 @@ class UrlSyncScheduler {
         log.info("Click sync finished");
     }
 
-    private void processBatch(List<Object> codes) {
-        var tasks = codes.stream().map(obj -> (Callable<Void>) () -> {
-            String code = obj.toString();
-            String clicksKey = getClicksKey(code);
+    private void processBatch(List<String> codes) {
+        var futures = codes.stream()
+                .map(code -> CompletableFuture.runAsync(() -> processSingleCode(code), applicationTaskExecutor))
+                .toArray(CompletableFuture[]::new);
 
-            var oldValObj = redisTemplate.opsForValue().getAndSet(clicksKey, "0");
+        CompletableFuture.allOf(futures).join();
+    }
 
-            if (Objects.nonNull(oldValObj)) {
-                long clicks = Long.parseLong(oldValObj.toString());
+    private void processSingleCode(String code) {
+        String clicksKey = getClicksKey(code);
+        String oldValue = redisTemplate.opsForValue().getAndSet(clicksKey, "0");
 
-                if (clicks > 0) {
-                    try {
-                        urlRepository.updateClickCount(code, clicks);
-                    } catch (Exception e) {
-                        redisTemplate.opsForValue().increment(clicksKey, clicks);
-                        redisTemplate.opsForSet().add(DIRTY_SET_KEY, code);
-                        log.error("Failed to sync clicks for {}, returned {} clicks to cache", code, clicks, e);
-                    }
-                }
+        if (!hasText(oldValue)) {
+            return;
+        }
+
+        long clicks = Long.parseLong(oldValue);
+        if (clicks > 0) {
+            try {
+                urlRepository.updateClickCount(code, clicks);
+            } catch (Exception e) {
+                redisTemplate.opsForValue().increment(clicksKey, clicks);
+                redisTemplate.opsForSet().add(DIRTY_SET_KEY, code);
+                log.error("Failed to sync clicks for {}, returned {} clicks", code, clicks, e);
             }
-            return null;
-        }).toList();
-
-        try {
-            batchExecutor.invokeAll(tasks);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.error("Batch interrupted", e);
         }
     }
 
     private int dynamicBatchSize() {
         var size = redisTemplate.opsForSet().size(DIRTY_SET_KEY);
-        if (Objects.isNull(size) || size < SMALL_QUANTITY) {
+        if (isNull(size) || size < SMALL_QUANTITY) {
             return MIN_BATCH_SIZE;
         }
 
